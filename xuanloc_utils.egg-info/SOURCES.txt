@@ -6,7 +6,9 @@ xuanloc_utils/check_info_train_val.py
 xuanloc_utils/color.py
 xuanloc_utils/common.py
 xuanloc_utils/filter_obj.py
+xuanloc_utils/folder_encoder.py
 xuanloc_utils/fps.py
+xuanloc_utils/logger.py
 xuanloc_utils/merge_data_trainvaltrainval.py
 xuanloc_utils/remove_non_obj_data.py
 xuanloc_utils/remove_slice_data_labelimg.py

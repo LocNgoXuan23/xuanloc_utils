@@ -4,7 +4,7 @@ from xuanloc_utils import common
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-def split_data(input_paths, output_path, ratio):
+def split_multiple_data(input_paths, output_path, ratio):
     train_output_path = os.path.join(output_path, 'train')
     val_output_path = os.path.join(output_path, 'val')
     img_train_output_path = os.path.join(train_output_path, 'images')
@@ -87,44 +87,34 @@ def split_data(input_paths, output_path, ratio):
     assert input_img_cnt == split_img_cnt 
     assert input_label_cnt == split_label_cnt
 
-def split_data_cls(input_path, output_path, ratio):
+def split_multiple_data_cls(input_map, output_path, ratio):
     train_output_path = os.path.join(output_path, 'train')
     val_output_path = os.path.join(output_path, 'val')
     common.create_folder(output_path)
     common.create_folder(train_output_path)
     common.create_folder(val_output_path)
-
-    input_img_cnt = 0
-    split_img_cnt = 0
-
-    for cls_name in os.listdir(input_path):
-        cls_input_path = os.path.join(input_path, cls_name)
-        if not os.path.isdir(cls_input_path):
-            continue
-
-        cls_train_output_path = os.path.join(train_output_path, cls_name)
-        cls_val_output_path = os.path.join(val_output_path, cls_name)
-        common.create_folder(cls_train_output_path)
-        common.create_folder(cls_val_output_path)
-
-        img_names = os.listdir(cls_input_path)
-        input_img_cnt += len(img_names)
-
-        img_names_train, img_names_val = train_test_split(img_names, shuffle=True, test_size=ratio)
+    
+    cls_names = list(input_map.keys())
+    for cls_name in tqdm(cls_names):
+        input_cls_paths = input_map[cls_name]
+        output_cls_train_path = os.path.join(train_output_path, cls_name)
+        output_cls_val_path = os.path.join(val_output_path, cls_name)
+        common.create_folder(output_cls_train_path)
+        common.create_folder(output_cls_val_path)
         
-        for img_name in tqdm(img_names_train, desc=f'Copying train images for {cls_name}'):
-            src_path = os.path.join(cls_input_path, img_name)
-            dst_path = os.path.join(cls_train_output_path, img_name)
-            shutil.copy(src_path, dst_path)
-            split_img_cnt += 1
-
-        for img_name in tqdm(img_names_val, desc=f'Copying val images for {cls_name}'):
-            src_path = os.path.join(cls_input_path, img_name)
-            dst_path = os.path.join(cls_val_output_path, img_name)
-            shutil.copy(src_path, dst_path)
-            split_img_cnt += 1
-
-    print(f'Input image count: {input_img_cnt}')
-    print(f'Split image count: {split_img_cnt}')
-
-    assert input_img_cnt == split_img_cnt, "Số lượng ảnh đầu vào và đầu ra không khớp"
+        for input_cls_path in tqdm(input_cls_paths, desc=f'Processing {cls_name}'):
+            img_names = os.listdir(input_cls_path)
+            img_names_train, img_names_val = train_test_split(img_names, shuffle=True, test_size=ratio)
+            
+            # Copy train images
+            for img_name in img_names_train:
+                src_path = os.path.join(input_cls_path, img_name)
+                dst_path = os.path.join(output_cls_train_path, img_name)
+                shutil.copy(src_path, dst_path)
+                
+            # Copy val images
+            for img_name in img_names_val:
+                src_path = os.path.join(input_cls_path, img_name)
+                dst_path = os.path.join(output_cls_val_path, img_name)
+                shutil.copy(src_path, dst_path)
+        

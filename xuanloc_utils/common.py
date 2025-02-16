@@ -279,6 +279,87 @@ def concat_videos(video_paths, grid, output_path):
     
     return output_path
 
+def concat_videos_opencv(video_paths, grid, output_path):
+    """
+    Merge các video theo lưới grid (grid[0]: số hàng, grid[1]: số cột)
+    Các video đầu vào có cùng kích thước và số frame.
+    Mỗi video sẽ được vẽ tiêu đề (tên file) ở trên cùng.
+    """
+    # Kiểm tra số lượng video có khớp với bố cục grid không
+    expected_num_clips = grid[0] * grid[1]
+    if len(video_paths) != expected_num_clips:
+        raise ValueError(f"Số lượng đường dẫn video ({len(video_paths)}) không khớp với bố cục lưới {grid}.")
+
+    # Mở tất cả các video bằng cv2.VideoCapture
+    captures = [cv2.VideoCapture(path) for path in video_paths]
+
+    # Lấy các thuộc tính video từ video đầu tiên (giả sử tất cả giống nhau)
+    fps = captures[0].get(cv2.CAP_PROP_FPS)
+    frame_count = int(captures[0].get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_width = int(captures[0].get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(captures[0].get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    # Kích thước frame đầu ra (ghép theo grid)
+    out_width = grid[1] * frame_width
+    out_height = grid[0] * frame_height
+
+    # Khởi tạo VideoWriter với codec và FPS như video gốc
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Có thể dùng 'XVID' hoặc codec khác nếu cần
+    out_writer = cv2.VideoWriter(output_path, fourcc, fps, (out_width, out_height))
+    
+    # Lấy tiêu đề từ tên file của mỗi video
+    titles = [os.path.splitext(os.path.basename(path))[0] for path in video_paths]
+
+    # Thiết lập các tham số cho việc vẽ chữ
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    text_color = (255, 255, 255)  # Màu trắng
+    text_bg_color = (0, 0, 0)     # Màu nền đen cho chữ
+
+    # Lặp qua từng frame của video (giả sử tất cả video có cùng số frame)
+    for frame_idx in tqdm(range(frame_count)):
+        frames = []
+        # Lấy một frame từ mỗi video
+        for cap in captures:
+            ret, frame = cap.read()
+            # Nếu không đọc được frame (trường hợp gặp lỗi) thì thay thế bằng frame đen
+            if not ret:
+                frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+            frames.append(frame)
+        
+        # Vẽ tiêu đề lên mỗi frame (ở vị trí trên cùng, canh giữa)
+        for i, frame in enumerate(frames):
+            title = titles[i]
+            # Tính toán kích thước text để căn giữa
+            (text_w, text_h), baseline = cv2.getTextSize(title, font, font_scale, font_thickness)
+            text_x = (frame_width - text_w) // 2
+            text_y = text_h + 10  # 10 pixel lề trên
+            # Vẽ hình chữ nhật nền cho chữ
+            cv2.rectangle(frame, (text_x, text_y - text_h - baseline),
+                          (text_x + text_w, text_y + baseline), text_bg_color, cv2.FILLED)
+            # Vẽ chữ lên frame
+            cv2.putText(frame, title, (text_x, text_y), font, font_scale, text_color, font_thickness, cv2.LINE_AA)
+        
+        # Ghép các frame của video theo lưới
+        # Chia danh sách frames thành các hàng (mỗi hàng có grid[1] frame)
+        rows_frames = []
+        for i in range(0, expected_num_clips, grid[1]):
+            row = np.hstack(frames[i:i+grid[1]])
+            rows_frames.append(row)
+        # Ghép các hàng theo chiều dọc
+        grid_frame = np.vstack(rows_frames)
+        
+        # Ghi frame ghép vào video đầu ra
+        out_writer.write(grid_frame)
+    
+    # Giải phóng các đối tượng VideoCapture và VideoWriter
+    for cap in captures:
+        cap.release()
+    out_writer.release()
+    
+    return output_path
+
 def cal_custom_iou_box(box1, box2):
     x1_min, y1_min, x1_max, y1_max = box1
     x2_min, y2_min, x2_max, y2_max = box2
