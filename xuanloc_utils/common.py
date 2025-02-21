@@ -560,12 +560,21 @@ def remove_zones(img, zones):
         pts = pts.reshape((-1, 1, 2))
         img = cv2.fillPoly(img, [pts], (0, 0, 0))
     return img
+
 def crop_img(img, box, is_scale=False):
+    h, w = img.shape[:2]
     x1, y1, x2, y2 = box
+
     if is_scale:
-        x1, y1, x2, y2 = int(x1 * img.shape[1]), int(y1 * img.shape[0]), int(x2 * img.shape[1]), int(y2 * img.shape[0])
+        x1, y1 = int(x1 * w), int(y1 * h)
+        x2, y2 = int(x2 * w), int(y2 * h)
     else:
-        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+
+    # Ensure coordinates are within bounds
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(w, x2), min(h, y2)
+
     return img[y1:y2, x1:x2]
 
 def format_time(timestamp):
