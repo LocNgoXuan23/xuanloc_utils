@@ -178,7 +178,7 @@ def crop_frames_from_video(args):
 def crop_frames_from_videos(videos_path, output_folder, num_gap_frames):
     create_folder(output_folder)
     
-    video_names, video_paths = get_items_from_folder(videos_path, ext='.mp4')
+    video_names, video_paths = get_items_from_folder(videos_path, exts=['.mp4'])
     args = [(video_path, output_folder, num_gap_frames) for video_path in video_paths]
 
     # Determine the number of processes to use
